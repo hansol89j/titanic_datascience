@@ -1,0 +1,207 @@
+---
+title: "Titanic Sruvivor Rate"
+output: html_notebook
+---
+
+
+
+## Data Dictionary
+survival - 0=no, 1=yes
+pclass - 1=1st, 2=2nd, 3=3rd
+age - age in years
+sibsp - # of siblings / spouses aboard the Titanic
+parch -	# of parents / children aboard the Titanic	
+ticket -	Ticket number	
+fare -	Passenger fare	
+cabin -	Cabin number	
+embarked - Port of Embarkation	C = Cherbourg, Q = Queenstown, S = Southampton
+
+
+```{r eval=FALSE, include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(caret)
+library(car) 
+library(gpairs) 
+library(corrplot)
+library(gplots) 
+library(arm)
+library(broom) 
+library(leaps)
+library(readr)
+library(RColorBrewer)
+library(dplyr)
+library(gridExtra)
+library(knitr)
+```
+
+```{r import_review_data, echo=FALSE}
+train <- read.csv("train.csv",stringsAsFactors = FALSE, na.strings = c("NA",""))
+test <- read.csv("test.csv", stringsAsFactors = FALSE, na.strings = c("NA",""))
+
+
+summary(train)
+
+
+test$Survived <- NA
+
+all <- rbind(train, test)
+```
+
+###Missing Values in Dataset
+
+First I would like to see which columns have missing values.
+```{r}
+sapply(all, function(x) {sum(is.na(x))})
+
+missing_values <- all %>% summarize_all(funs(sum(is.na(.))/n()))
+
+
+missing_values <- gather(missing_values, key="feature", value="missing_pct")
+
+missing_values %>% 
+
+  ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct)) +
+
+  geom_bar(stat="identity",fill="red")+
+
+  coord_flip()+theme_bw()
+```
+
+There are 418 NAs for Survived because I just created new column in test dataset. Cabin seems like sparsely populated. Age, fate, and embarked are having missing values.
+
+
+###Exploring some of the most important variables
+
+Let's explore which variables are the most important variables.
+
+First, the survivor rate, our response variable.
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(Survived, fill=factor(Survived))) + geom_bar(stat="count") +
+  labs(x="How many people died and survived in Titanic?") +
+  geom_label(stat='count',aes(label=..count..), size=7)
+```
+
+Second, passenger class.
+```{r}
+p1 <- ggplot(all, aes(Pclass, fill=factor(Pclass))) +
+  geom_bar(stat="count", position="dodge") +
+  labs(x="Pclass, All data") + 
+  geom_label(stat='count', aes(label=..count..)) +
+  theme_minimal() +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+p2 <- ggplot(all[!is.na(all$Survived),], aes(Pclass, fill=factor(Survived))) +
+  geom_bar(stat="count", position = "dodge") +
+  labs(x="Pclass vs. Survivor Rate") + 
+  theme_minimal() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+p3 <- ggplot(all[!is.na(all$Survived),], aes(Pclass, fill=factor(Survived))) +
+  geom_bar(stat="count", position = "dodge") +
+  labs(x="Pclass vs. Survivor Rate") + 
+  facet_grid(.~Sex) +
+  theme_minimal() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+grid.arrange(p1, p2, p3, ncol=2)
+```
+
+Third, survivor rate compare with gender
+```{r}
+p4 <- ggplot(all[!is.na(all$Survived),], aes(Sex, fill=factor(Survived))) +
+  geom_bar(stat = "count", position="dodge") + 
+  geom_label(stat='count', aes(label=..count..))
+
+p5 <-ggplot()
+
+```
+
+Fourth, survivor rate with age
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(Age, fill=factor(Survived))) + 
+  geom_freqpoly(binwidth = 1, color = "blue") +
+  geom_histogram(binwidth = 1, color = "red", alpha = .5) +
+  theme_linedraw() +
+  scale_y_continuous(limits = c(0, 40), breaks = c(0,20,40,60,80))
+```
+
+Sibsp vs. Survivor
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(SibSp, fill=factor(Survived))) +
+  geom_bar(stat="count")
+```
+
+Parch vs. Survivor
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(Parch, fill=factor(Survived))) +
+  geom_bar(stat="count")
+```
+
+
+Fare vs. Survivor
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(Fare,fill=factor(Survived))) +
+  geom_density()
+```
+
+
+I think that the most important variables are passenger class, gender, and survivor rate.
+
+```{r}
+all$Sex <- as.factor(all$Sex)
+all$Survived <- as.factor(all$Survived)
+all$Pclass <- as.ordered(all$Pclass)
+```
+
+
+## Featuring Engineering
+
+### Creating the Title variable
+```{r}
+#Extracting title and surname from names
+all$Surname <- sapply(all$Name, function(x) {strsplit(x, split='[,.]')[[1]][1]})
+#correcting some surnames that also include a maiden name
+all$Surname <- sapply(all$Surname, function(x) {strsplit(x, split='[-]')[[1]][1]})
+all$Title <- sapply(all$Name, function(x) {strsplit(x, split='[,.]')[[1]][2]})
+all$Title <- sub(' ', '', all$Title) #removing spaces before title
+kable(table(all$Sex, all$Title))
+```
+
+##Fixing mis spelled titles
+```{r}
+all$Title[all$Title %in% c("Mlle", "Ms")] <- "Miss"
+all$Title[all$Title == "Mme"] <- "Mrs"
+all$Title[!(all$Title %in% c('Master', 'Miss', 'Mr', 'Mrs'))] <- "Rare Title"
+all$Title <- as.factor(all$Title)
+kable(table(all$Sex, all$Title))
+```
+
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(Title, fill=Survived)) +
+  geom_bar(stat="count", position="stack") +
+  labs(x="Title")
+```
+
+
+
+### Finding groups of people traveling together
+```{r}
+all$FSize <- all$SibSp + all$Parch + 1
+
+```
+
+
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(FSize, fill=Survived)) +
+  geom_bar(stat="count", position="dodge") +
+   scale_x_continuous(breaks=c(1:11)) +
+  labs(x = 'Family Size') + theme_minimal()
+```
+
+
+

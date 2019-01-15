@@ -1,0 +1,3 @@
+"0","all$Sex <- as.factor(all$Sex)"
+"0","all$Survived <- as.factor(all$Survived)"
+"0","all$Pclass <- as.ordered(all$Pclass)"

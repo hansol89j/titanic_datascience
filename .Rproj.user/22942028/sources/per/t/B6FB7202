@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1545497011172.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "136312709",
+    "id" : "B6FB7202",
+    "lastKnownWriteTime" : 1545018132,
+    "last_content_update" : 1545018132,
+    "path" : "D:/Projects/DataScience/Insurance/insurance.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "69,66",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

@@ -1,0 +1,3 @@
+"0","ggplot(all[!is.na(all$Survived),], aes(Title, fill=Survived)) +"
+"0","  geom_bar(stat=""count"", position=""stack"") +"
+"0","  labs(x=""Title"")"

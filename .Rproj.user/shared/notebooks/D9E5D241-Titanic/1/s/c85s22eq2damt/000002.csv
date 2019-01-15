@@ -1,0 +1,3 @@
+"0","ggplot(all[!is.na(all$Survived),], aes(Survived, fill=factor(Survived))) + geom_bar(stat=""count"") +"
+"0","  labs(x=""How many people died and survived in Titanic?"") +"
+"0","  geom_label(stat='count',aes(label=..count..), size=7)"
